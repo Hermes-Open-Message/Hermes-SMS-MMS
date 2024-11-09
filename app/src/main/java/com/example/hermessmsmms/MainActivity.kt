@@ -1,21 +1,27 @@
 package com.example.hermessmsmms
 
+import android.annotation.SuppressLint
+import android.content.BroadcastReceiver
+import android.os.Build
 import android.os.Bundle
-import com.google.android.material.snackbar.Snackbar
+import android.view.Menu
+import android.view.MenuItem
 import androidx.appcompat.app.AppCompatActivity
 import androidx.navigation.findNavController
 import androidx.navigation.ui.AppBarConfiguration
 import androidx.navigation.ui.navigateUp
 import androidx.navigation.ui.setupActionBarWithNavController
-import android.view.Menu
-import android.view.MenuItem
 import com.example.hermessmsmms.databinding.ActivityMainBinding
+import com.google.android.material.snackbar.Snackbar
+
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var appBarConfiguration: AppBarConfiguration
     private lateinit var binding: ActivityMainBinding
+    private lateinit var receiver: BroadcastReceiver
 
+    @SuppressLint("UnspecifiedRegisterReceiverFlag")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -24,6 +30,17 @@ class MainActivity : AppCompatActivity() {
 
         setSupportActionBar(binding.toolbar)
 
+        // Actions when receiving SMS
+        /*val filter = IntentFilter()
+        filter.addAction("hermes.sms.received")
+        receiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context, intent: Intent) {
+                println("Triggered by SMS reception")
+            }
+        }
+        registerReceiver(receiver, filter)
+        */
+
         val navController = findNavController(R.id.nav_host_fragment_content_main)
         appBarConfiguration = AppBarConfiguration(navController.graph)
         setupActionBarWithNavController(navController, appBarConfiguration)
@@ -31,6 +48,17 @@ class MainActivity : AppCompatActivity() {
         binding.fab.setOnClickListener { view ->
             Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
                 .setAction("Action", null)
+                .setAnchorView(R.id.fab).show()
+        }
+
+        if (intent.action == "hermes.sms.received" && intent.hasExtra("SMS_INFO")) {
+            val smsInfo: SmsInfo? = when {
+                Build.VERSION.SDK_INT >= 33 -> intent.getParcelableExtra("SMS_INFO", SmsInfo::class.java)
+                else -> @Suppress("DEPRECATION") intent.getParcelableExtra("SMS_INFO") as? SmsInfo
+            }
+
+            Snackbar.make(findViewById(android.R.id.content), "${smsInfo?.message}", Snackbar.LENGTH_LONG)
+                .setAction("${smsInfo?.sender}", null)
                 .setAnchorView(R.id.fab).show()
         }
     }
@@ -55,5 +83,10 @@ class MainActivity : AppCompatActivity() {
         val navController = findNavController(R.id.nav_host_fragment_content_main)
         return navController.navigateUp(appBarConfiguration)
                 || super.onSupportNavigateUp()
+    }
+
+    override fun onDestroy() {
+        unregisterReceiver(receiver)
+        super.onDestroy()
     }
 }
